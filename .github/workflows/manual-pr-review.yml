@@ -1,0 +1,57 @@
+name: Synthetic manual PR review
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+    paths:
+      - '**/*.py'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to review
+        required: true
+        type: number
+      exclude_project:
+        description: Exclude project settings for differential control
+        required: true
+        default: false
+        type: boolean
+jobs:
+  pr-review:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Set PR number
+        id: pr-number
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/head', inputs.pr_number) || '' }}
+      - name: Run pinned action with dummy API target
+        uses: anthropics/claude-code-action@bbfaf8e1ffe3e688f7ab65ceee78de241e24a238
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic_api_key: TESTER_OWNED_DUMMY_KEY
+          prompt: Say one word
+          claude_args: ${{ inputs.exclude_project && '--allowedTools "Read" --setting-sources user' || '--allowedTools "Read"' }}
+        env:
+          ANTHROPIC_BASE_URL: http://127.0.0.1:9
+      - name: Record harmless marker
+        if: always()
+        run: |
+          if [ -f hook-marker.txt ] && [ "$(cat hook-marker.txt)" = 'TESTER_OWNED_HOOK_MARKER' ]; then
+            echo 'fixture_marker=present'
+          else
+            echo 'fixture_marker=absent'
+          fi
