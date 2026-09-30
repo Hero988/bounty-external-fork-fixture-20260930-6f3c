@@ -38,13 +38,11 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/head', inputs.pr_number) || '' }}
-      - name: Run pinned action with dummy federation identifiers
+      - name: Run pinned action with dummy API target
         uses: anthropics/claude-code-action@bbfaf8e1ffe3e688f7ab65ceee78de241e24a238
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          anthropic_federation_rule_id: fdrl_01oidFeyltymagd4BClZqn7Z
-          anthropic_organization_id: 00000000-0000-4000-8000-000000000001
-          anthropic_service_account_id: svac_01cNTaRgasi8zLO7rqKrQGB7
+          anthropic_api_key: TESTER_OWNED_DUMMY_KEY
           prompt: Say one word
           claude_args: ${{ inputs.exclude_project && '--allowedTools "Read" --setting-sources user' || '--allowedTools "Read"' }}
         env:
